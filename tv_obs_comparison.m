@@ -5,7 +5,8 @@ clc; clear; close all;
 % Define varying tensor dimensions
 p_values = [2];  % Rows
 n_values = [2];  % Columns
-r_values = [2,3,4,5,6,7,8];  % Depth
+%r_values = [2,3,4,5,6,7,8];  % Depth
+r_values = [2,3,4,5,6,7,8, 9, 10, 11, 12, 13, 14, 15,16, 17, 18];
 num_trials = 5;
 %k = 3;  % Number of recursion steps
 %%
@@ -53,11 +54,11 @@ for trials = 1:num_trials
                     F_r(i, j) = omega^((i-1)*(j-1)) / sqrt(r); % Normalize by sqrt(n)
                 end
             end
+            F_r = dftmtx(r) / sqrt(r);
             I_p = eye(p);
             I_n = eye(n);
 
             % ----- Method 1: bcirc Approach -----
-            
             bcirc_T_t = sym([]); % Start with an empty matrix
             bcirc_A_t = sym([]);
             T_t = C_t; %N0(t) = C(t)
@@ -75,24 +76,25 @@ for trials = 1:num_trials
                 bcirc_A_t = [bcirc_A_t; row];
             end
             
-            tic;
-            % Derivative of bcirc_T(t) with respect to t
-            %d_bcirc_T_t_dt = diff(bcirc_T_t, t); %d(bcirc(N0(t))/dt)
-            N_prev = bcirc_T_t; %N0(t)
-            bcirc_stack = sym([]); % prepare for the large concatenated matrix bcirc(N_0(t))...
-            for l = 1:k
-                bcirc_N_prev = N_prev;
-                bcirc_A = bcirc_A_t;
-                bcirc_N = bcirc_N_prev * bcirc_A + diff(bcirc_N_prev, t); % bcirc(N_{l+1}(t))
-                bcirc_stack = [bcirc_stack; bcirc_N];
-                N_prev = bcirc_N;
+            if r <= 15
+                tic;
+                % Derivative of bcirc_T(t) with respect to t
+                %d_bcirc_T_t_dt = diff(bcirc_T_t, t); %d(bcirc(N0(t))/dt)
+                N_prev = bcirc_T_t; %N0(t)
+                bcirc_stack = sym([]); % prepare for the large concatenated matrix bcirc(N_0(t))...
+                for l = 1:k
+                    bcirc_N_prev = N_prev;
+                    bcirc_A = bcirc_A_t;
+                    bcirc_N = bcirc_N_prev * bcirc_A + diff(bcirc_N_prev, t); % bcirc(N_{l+1}(t))
+                    bcirc_stack = [bcirc_stack; bcirc_N];
+                    N_prev = bcirc_N;
+                end
+
+                %D = subs(bcirc_stack, values, numerical_values);
+                %rank_bcirc = rank(double(D));
+                rank_bcirc = rank(bcirc_stack);
+                time_bcirc(ri, trials) = toc;
             end
-            
-            %D = subs(bcirc_stack, values, numerical_values);
-            %rank_bcirc = rank(double(D));
-            rank_bcirc = rank(bcirc_stack);
-            time_bcirc(ri, trials) = toc;
-            
             
             % ----- Method 2: Fourier Block Approach -----
             F_n_kron_I_n = kron(F_r, I_n); %pnr nnr
@@ -134,17 +136,22 @@ end
 
 %%
 % ---- visualization ----
-avg_time_bcirc = mean(time_bcirc, 2); % Average for each ri
+avg_time_bcirc = mean(time_bcirc(1:14,:), 2); % Average for each ri
 avg_time_fourier = mean(time_fourier, 2);
 
+r_values_bcirc = r_values(1:length(avg_time_bcirc));      % For bcirc
+r_values_fourier = r_values(1:length(avg_time_fourier));  % For fourier
+
 figure('Position', [100, 100, 400, 200]); 
-plot(r_values, avg_time_bcirc, '-o', 'LineWidth', 1.5, 'DisplayName', 'Unfolding-based method');
+plot(r_values_bcirc, (avg_time_bcirc), '-o', 'color','b','LineWidth', 1.7, 'DisplayName', 'Unfolding-based method');
 hold on;
-plot(r_values, avg_time_fourier, '-x', 'LineWidth', 1.5, 'DisplayName', 'T-product-based method');
+plot(r_values_fourier, (avg_time_fourier), '-x', 'color','r','LineWidth', 1.7, 'DisplayName', 'T-product-based method');
 hold off;
+
+xlim([2, 18]);
+xticks([2, 6, 10, 14, 18]); 
 
 xlabel('Dimension r', 'FontSize', 11, 'FontWeight', 'bold');
 ylabel('Time (s)', 'FontSize', 11, 'FontWeight', 'bold');
 title('Comparison for Observability Condition', 'FontSize', 13, 'FontWeight', 'bold');
 legend('Location', 'northwest', 'FontSize', 10, 'FontWeight', 'bold', 'Box', 'off');
-grid on;
