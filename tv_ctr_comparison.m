@@ -76,7 +76,7 @@ for trials = 1:num_trials
                     rowA = [rowA, cell2sym(A_t(:, :, idxA))]; % Convert back to symbolic matrix
                 end
                 bcirc_T_t = [bcirc_T_t; row]; % bcirc(M0(t))
-                bcirc_A_t = [bcirc_A_t; row];
+                bcirc_A_t = [bcirc_A_t; rowA];
             end
             
             if r <= 15
